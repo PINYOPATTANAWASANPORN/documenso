@@ -138,36 +138,38 @@ export const run = async ({ payload, io }: { payload: TSendDocumentCompletedEmai
 
     const i18n = await getI18nInstance(emailLanguage);
 
-    await emailTransport.sendMail({
-      to: [
-        {
-          name: owner.name || '',
-          address: owner.email,
-        },
-      ],
-      from: senderEmail,
-      replyTo: replyToEmail,
-      subject: i18n._(msg`Signing Complete!`),
-      html,
-      text,
-      attachments: completedDocumentEmailAttachments,
-    });
+    await io.runTask(`send-document-completed-owner-${owner.email}`, async () => {
+      await emailTransport.sendMail({
+        to: [
+          {
+            name: owner.name || '',
+            address: owner.email,
+          },
+        ],
+        from: senderEmail,
+        replyTo: replyToEmail,
+        subject: i18n._(msg`Signing Complete!`),
+        html,
+        text,
+        attachments: completedDocumentEmailAttachments,
+      });
 
-    await prisma.documentAuditLog.create({
-      data: createDocumentAuditLogData({
-        type: DOCUMENT_AUDIT_LOG_TYPE.EMAIL_SENT,
-        envelopeId: envelope.id,
-        user: null,
-        requestMetadata,
-        data: {
-          emailType: 'DOCUMENT_COMPLETED',
-          recipientEmail: owner.email,
-          recipientName: owner.name ?? '',
-          recipientId: owner.id,
-          recipientRole: 'OWNER',
-          isResending: false,
-        },
-      }),
+      await prisma.documentAuditLog.create({
+        data: createDocumentAuditLogData({
+          type: DOCUMENT_AUDIT_LOG_TYPE.EMAIL_SENT,
+          envelopeId: envelope.id,
+          user: null,
+          requestMetadata,
+          data: {
+            emailType: 'DOCUMENT_COMPLETED',
+            recipientEmail: owner.email,
+            recipientName: owner.name ?? '',
+            recipientId: owner.id,
+            recipientRole: 'OWNER',
+            isResending: false,
+          },
+        }),
+      });
     });
   }
 
@@ -235,39 +237,41 @@ export const run = async ({ payload, io }: { payload: TSendDocumentCompletedEmai
 
       const i18n = await getI18nInstance(emailLanguage);
 
-      await emailTransport.sendMail({
-        to: [
-          {
-            name: recipient.name,
-            address: recipient.email,
-          },
-        ],
-        from: senderEmail,
-        replyTo: replyToEmail,
-        subject:
-          isDirectTemplate && envelope.documentMeta?.subject
-            ? renderCustomEmailTemplate(envelope.documentMeta.subject, customEmailTemplate)
-            : i18n._(msg`Signing Complete!`),
-        html,
-        text,
-        attachments: completedDocumentEmailAttachments,
-      });
+      await io.runTask(`send-document-completed-recipient-${recipient.id}`, async () => {
+        await emailTransport.sendMail({
+          to: [
+            {
+              name: recipient.name,
+              address: recipient.email,
+            },
+          ],
+          from: senderEmail,
+          replyTo: replyToEmail,
+          subject:
+            isDirectTemplate && envelope.documentMeta?.subject
+              ? renderCustomEmailTemplate(envelope.documentMeta.subject, customEmailTemplate)
+              : i18n._(msg`Signing Complete!`),
+          html,
+          text,
+          attachments: completedDocumentEmailAttachments,
+        });
 
-      await prisma.documentAuditLog.create({
-        data: createDocumentAuditLogData({
-          type: DOCUMENT_AUDIT_LOG_TYPE.EMAIL_SENT,
-          envelopeId: envelope.id,
-          user: null,
-          requestMetadata,
-          data: {
-            emailType: 'DOCUMENT_COMPLETED',
-            recipientEmail: recipient.email,
-            recipientName: recipient.name,
-            recipientId: recipient.id,
-            recipientRole: recipient.role,
-            isResending: false,
-          },
-        }),
+        await prisma.documentAuditLog.create({
+          data: createDocumentAuditLogData({
+            type: DOCUMENT_AUDIT_LOG_TYPE.EMAIL_SENT,
+            envelopeId: envelope.id,
+            user: null,
+            requestMetadata,
+            data: {
+              emailType: 'DOCUMENT_COMPLETED',
+              recipientEmail: recipient.email,
+              recipientName: recipient.name,
+              recipientId: recipient.id,
+              recipientRole: recipient.role,
+              isResending: false,
+            },
+          }),
+        });
       });
     }),
   );
