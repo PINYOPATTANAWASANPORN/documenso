@@ -147,8 +147,9 @@ export const SignaturePadDraw = ({ className, value, onChange, ...props }: Signa
       event.preventDefault();
     }
 
-    if ('buttons' in event && event.buttons === 1) {
-      onMouseDown(event);
+    if (isPressed && 'buttons' in event && event.buttons === 1) {
+      const point = Point.fromEvent(event, SIGNATURE_CANVAS_DPI, $el.current);
+      setCurrentLine([...currentLine, point]);
     }
   };
 
